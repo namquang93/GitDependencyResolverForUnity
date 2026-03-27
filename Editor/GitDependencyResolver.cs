@@ -37,10 +37,12 @@ namespace Coffee.GitDependencyResolver
 
         private static PackageMeta[] GetInstalledPackages()
         {
+            var manifestJsonPackageMeta = PackageMeta.FromPackageJson("./Packages/manifest.json");
             return Directory.GetDirectories("./Library/PackageCache")
                 .Concat(Directory.GetDirectories("./Packages"))
                 .Select(PackageMeta.FromPackageDir) // Convert to PackageMeta
-                .Concat(new[] {PackageMeta.FromPackageJson("./Packages/manifest.json")})
+                .Concat(new[] {manifestJsonPackageMeta})
+                .Concat(manifestJsonPackageMeta.GetRelativePackages())
                 .Where(x => x != null) // Skip null
                 .ToArray();
         }

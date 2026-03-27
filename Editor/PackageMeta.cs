@@ -55,6 +55,8 @@ namespace Coffee.GitDependencyResolver
                 @"^(git\\+)?" +
                 @"(git@|git://|http://|https://|ssh://)",
                 k_RegOption);
+        
+        private const string k_RelativeFilePrefix = "file:../";
 
         private static readonly GitLock s_GitLock = new GitLock();
 
@@ -86,9 +88,7 @@ namespace Coffee.GitDependencyResolver
             try
             {
                 if (!File.Exists(filePath))
-                {
                     return null;
-                }
 
                 string dir = Path.GetDirectoryName(filePath);
                 Dictionary<string, object> dict = Json.Deserialize(File.ReadAllText(filePath)) as Dictionary<string, object>;
@@ -154,7 +154,14 @@ namespace Coffee.GitDependencyResolver
             var isGit = s_IsGitReg.IsMatch(url);
             if (!isGit)
             {
-                package.SetVersion(url);
+                if (url.StartsWith(k_RelativeFilePrefix))
+                {
+                    package.SetPath(url);
+                }
+                else
+                {
+                    package.SetVersion(url);
+                }
                 return package;
             }
 
@@ -188,6 +195,11 @@ namespace Coffee.GitDependencyResolver
                 version = v;
         }
 
+        private void SetPath(string relativePath)
+        {
+            path = relativePath;
+        }
+
         private void ProcessUrlQuery(string urlQuery)
         {
             // Process url query.
@@ -213,6 +225,13 @@ namespace Coffee.GitDependencyResolver
         public IEnumerable<PackageMeta> GetAllDependencies()
         {
             return gitDependencies.Concat(dependencies);
+        }
+
+        public IEnumerable<PackageMeta> GetRelativePackages()
+        {
+            return dependencies.Where(dependency => dependency.path.StartsWith(k_RelativeFilePrefix))
+                .Select(dependency => Path.GetFullPath(dependency.path[k_RelativeFilePrefix.Length..]))
+                .Select(FromPackageDir);
         }
 
         public string GetDirectoryName()
